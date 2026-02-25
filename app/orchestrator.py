@@ -5,6 +5,7 @@ from typing import Any
 
 from app.agents import EscalationAgent, FrontDeskAgent, ResponseComposer, TriageAgent
 from app.engines import ClinicalRulesEngine, IntentClassifier, RedFlagEngine, RiskScoringAgent
+from app.llm import GeminiTonePolisher
 from app.models import AuditEvent, IntentType, MessageResponse, SessionData, TriageState, UrgencyLevel
 
 
@@ -19,6 +20,7 @@ class TriageOrchestrator:
         self.risk_agent = RiskScoringAgent()
         self.escalation_agent = EscalationAgent()
         self.response_composer = ResponseComposer()
+        self.tone_polisher = GeminiTonePolisher()
 
     def _now(self) -> str:
         return datetime.now(timezone.utc).isoformat()
@@ -137,6 +139,7 @@ class TriageOrchestrator:
                 "",
             )
             self._transition(session, TriageState.CLOSED, "emergency_session_terminated")
+            response = self.tone_polisher.polish(response)
             self._log(session, "assistant_message", {"message": response})
             return MessageResponse(session=session, response=response)
 
@@ -146,16 +149,19 @@ class TriageOrchestrator:
             if intent.intent == IntentType.greeting:
                 self._transition(session, TriageState.GREETING, "greeting_detected")
                 text = self.front_desk_agent.respond()
+                text = self.tone_polisher.polish(text)
                 self._log(session, "assistant_message", {"message": text})
                 return MessageResponse(session=session, response=text)
             if intent.intent in {IntentType.admin_question, IntentType.appointment_request}:
                 self._transition(session, TriageState.INTAKE, "non_clinical_intake")
                 text = "I can help route appointments and triage concerns. If you have symptoms, please describe them briefly."
+                text = self.tone_polisher.polish(text)
                 self._log(session, "assistant_message", {"message": text})
                 return MessageResponse(session=session, response=text)
             if intent.intent == IntentType.unclear:
                 self._transition(session, TriageState.INTAKE, "clarification_needed")
                 text = "Thanks. Could you share whether you need symptom triage, an appointment, or an admin question?"
+                text = self.tone_polisher.polish(text)
                 self._log(session, "assistant_message", {"message": text})
                 return MessageResponse(session=session, response=text)
             self._transition(session, TriageState.TRIAGE, "medical_intent_detected")
@@ -169,6 +175,7 @@ class TriageOrchestrator:
                 "",
                 "",
             )
+            response = self.tone_polisher.polish(response)
             self._log(session, "assistant_message", {"message": response})
             return MessageResponse(session=session, response=response)
 
@@ -191,6 +198,7 @@ class TriageOrchestrator:
                         "",
                         "summary",
                     )
+                    response = self.tone_polisher.polish(response)
                     self._log(session, "assistant_message", {"message": response})
                     return MessageResponse(session=session, response=response)
 
@@ -216,10 +224,12 @@ class TriageOrchestrator:
                 "summary",
             )
             self._transition(session, TriageState.CLOSED, "handoff_completed")
+            response = self.tone_polisher.polish(response)
             self._log(session, "assistant_message", {"message": response})
             return MessageResponse(session=session, response=response)
 
         fallback = "I’m unable to continue safely in this session. Seek immediate medical care now."
+        fallback = self.tone_polisher.polish(fallback)
         self._log(session, "failsafe_triggered", {"message": fallback})
         session.urgency_level = UrgencyLevel.EMERGENCY
         session.recommended_action = fallback
