@@ -15,6 +15,25 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
+## Environment Variables (especially for AI keys)
+1. Copy `.env.example` to `.env`.
+2. Put your real keys in `.env` (for example `OPENAI_API_KEY`).
+3. **Do not commit `.env`**. Keep it local and configure the same variables in your deployment platform (Railway/Railpack service settings).
+
+```bash
+cp .env.example .env
+# then edit .env and set your real values
+```
+
+For local runs in bash, load variables before starting the server:
+
+```bash
+set -a
+source .env
+set +a
+uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"
+```
+
 ## Test
 ```bash
 pytest -q
