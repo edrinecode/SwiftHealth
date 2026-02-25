@@ -11,6 +11,20 @@ class FrontDeskAgent:
         )
 
 
+
+    def is_name_question(self, message: str) -> bool:
+        lowered = message.lower()
+        return any(
+            phrase in lowered
+            for phrase in ["your name", "ur name", "who are you", "what's your name", "what is your name"]
+        )
+    def respond_to_name_question(self) -> str:
+        return (
+            "I’m SwiftHealth, your triage intake assistant. "
+            "I can help with symptom triage, appointment routing, or admin questions."
+        )
+
+
 class TriageAgent:
     QUESTION_FLOW = [
         ("age", "Thanks. What is your age?"),

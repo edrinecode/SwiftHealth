@@ -144,6 +144,13 @@ class TriageOrchestrator:
             return MessageResponse(session=session, response=response)
 
         if session.state in {TriageState.IDLE, TriageState.GREETING, TriageState.INTAKE}:
+            if self.front_desk_agent.is_name_question(message):
+                self._transition(session, TriageState.GREETING, "assistant_identity_requested")
+                text = self.front_desk_agent.respond_to_name_question()
+                text = self.tone_polisher.polish(text)
+                self._log(session, "assistant_message", {"message": text})
+                return MessageResponse(session=session, response=text)
+
             intent = self.intent_classifier.classify(message)
             self._log(session, "intent_classified", {"intent": intent.intent.value, "confidence": intent.confidence})
             if intent.intent == IntentType.greeting:

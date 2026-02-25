@@ -27,6 +27,11 @@ EMERGENCY_PHRASES = {
 GREETING_TERMS = {"hi", "hello", "hey", "good morning", "good afternoon"}
 ADMIN_TERMS = {"hours", "billing", "insurance", "location", "address"}
 APPOINTMENT_TERMS = {"appointment", "schedule", "book"}
+NAME_QUERY_PATTERNS = [
+    r"\bwhat(?:\s+is|'s)?\s+(?:your|ur)\s+name\b",
+    r"\bwho\s+are\s+you\b",
+    r"\bur\s+name\b",
+]
 SYMPTOM_TERMS = {
     "pain",
     "fever",
@@ -54,10 +59,14 @@ class IntentResult:
 class IntentClassifier:
     def classify(self, message: str) -> IntentResult:
         text = message.lower().strip()
+        if any(re.search(pattern, text) for pattern in NAME_QUERY_PATTERNS):
+            return IntentResult(IntentType.greeting, 0.9)
         if any(re.search(rf"\b{re.escape(term)}\b", text) for term in GREETING_TERMS):
             return IntentResult(IntentType.greeting, 0.95)
         if any(term in text for term in APPOINTMENT_TERMS):
             return IntentResult(IntentType.appointment_request, 0.9)
+        if "admin" in text or "admin question" in text or "admin qn" in text:
+            return IntentResult(IntentType.admin_question, 0.9)
         if any(term in text for term in ADMIN_TERMS):
             return IntentResult(IntentType.admin_question, 0.85)
         if any(term in text for term in SYMPTOM_TERMS):

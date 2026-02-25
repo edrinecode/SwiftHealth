@@ -101,3 +101,17 @@ def test_audit_log_integrity_and_no_diagnosis_text():
     for event in res.session.audit_log:
         assert event.timestamp
     assert "diagnosis" not in res.response.lower()
+
+
+def test_name_question_gets_identity_response():
+    o = TriageOrchestrator()
+    o.process_message("s10", "p1", "hi")
+    res = o.process_message("s10", "p1", "what ur name?")
+    assert "swifthealth" in res.response.lower()
+
+
+def test_admin_question_shortcuts_are_classified():
+    o = TriageOrchestrator()
+    res = o.process_message("s11", "p1", "admin qn")
+    assert res.session.state == TriageState.INTAKE
+    assert "route appointments" in res.response.lower()
